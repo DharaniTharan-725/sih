@@ -1,0 +1,56 @@
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: agrichain-mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: agrichain
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - agrichain-network
+
+  backend:
+    build: ./backend
+    container_name: agrichain-backend
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/agrichain
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: password
+      BLOCKCHAIN_NODE_URL: http://blockchain:8545
+    depends_on:
+      - mysql
+      - blockchain
+    networks:
+      - agrichain-network
+
+  frontend:
+    build: ./frontend
+    container_name: agrichain-frontend
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - agrichain-network
+
+  blockchain:
+    build: ./blockchain
+    container_name: agrichain-blockchain
+    ports:
+      - "8545:8545"
+    networks:
+      - agrichain-network
+
+volumes:
+  mysql_data:
+
+networks:
+  agrichain-network:
+    driver: bridge
