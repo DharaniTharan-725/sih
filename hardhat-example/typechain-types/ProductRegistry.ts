@@ -28,11 +28,11 @@ export declare namespace ProductRegistry {
     id: BigNumberish;
     name: string;
     category: string;
-    dateOfHarvest: string;
-    timeOfHarvest: string;
-    farmLocation: string;
+    dateOfManufacture: string;
+    timeOfManufacture: string;
+    place: string;
     qualityRating: string;
-    pricePerUnit: BigNumberish;
+    priceForFarmer: BigNumberish;
     description: string;
     farmer: AddressLike;
     isAvailable: boolean;
@@ -44,11 +44,11 @@ export declare namespace ProductRegistry {
     id: bigint,
     name: string,
     category: string,
-    dateOfHarvest: string,
-    timeOfHarvest: string,
-    farmLocation: string,
+    dateOfManufacture: string,
+    timeOfManufacture: string,
+    place: string,
     qualityRating: string,
-    pricePerUnit: bigint,
+    priceForFarmer: bigint,
     description: string,
     farmer: string,
     isAvailable: boolean,
@@ -58,11 +58,11 @@ export declare namespace ProductRegistry {
     id: bigint;
     name: string;
     category: string;
-    dateOfHarvest: string;
-    timeOfHarvest: string;
-    farmLocation: string;
+    dateOfManufacture: string;
+    timeOfManufacture: string;
+    place: string;
     qualityRating: string;
-    pricePerUnit: bigint;
+    priceForFarmer: bigint;
     description: string;
     farmer: string;
     isAvailable: boolean;
@@ -318,11 +318,11 @@ export namespace ProductRegisteredEvent {
     id: BigNumberish,
     name: string,
     category: string,
-    dateOfHarvest: string,
-    timeOfHarvest: string,
-    farmLocation: string,
+    dateOfManufacture: string,
+    timeOfManufacture: string,
+    place: string,
     qualityRating: string,
-    pricePerUnit: BigNumberish,
+    priceForFarmer: BigNumberish,
     description: string,
     farmer: AddressLike
   ];
@@ -330,11 +330,11 @@ export namespace ProductRegisteredEvent {
     id: bigint,
     name: string,
     category: string,
-    dateOfHarvest: string,
-    timeOfHarvest: string,
-    farmLocation: string,
+    dateOfManufacture: string,
+    timeOfManufacture: string,
+    place: string,
     qualityRating: string,
-    pricePerUnit: bigint,
+    priceForFarmer: bigint,
     description: string,
     farmer: string
   ];
@@ -342,11 +342,11 @@ export namespace ProductRegisteredEvent {
     id: bigint;
     name: string;
     category: string;
-    dateOfHarvest: string;
-    timeOfHarvest: string;
-    farmLocation: string;
+    dateOfManufacture: string;
+    timeOfManufacture: string;
+    place: string;
     qualityRating: string;
-    pricePerUnit: bigint;
+    priceForFarmer: bigint;
     description: string;
     farmer: string;
   }
@@ -359,21 +359,21 @@ export namespace ProductRegisteredEvent {
 export namespace ProductUpdatedEvent {
   export type InputTuple = [
     id: BigNumberish,
-    pricePerUnit: BigNumberish,
+    priceForFarmer: BigNumberish,
     qualityRating: string,
     isAvailable: boolean,
     updatedAt: BigNumberish
   ];
   export type OutputTuple = [
     id: bigint,
-    pricePerUnit: bigint,
+    priceForFarmer: bigint,
     qualityRating: string,
     isAvailable: boolean,
     updatedAt: bigint
   ];
   export interface OutputObject {
     id: bigint;
-    pricePerUnit: bigint;
+    priceForFarmer: bigint;
     qualityRating: string;
     isAvailable: boolean;
     updatedAt: bigint;
@@ -546,11 +546,11 @@ export interface ProductRegistry extends BaseContract {
         id: bigint;
         name: string;
         category: string;
-        dateOfHarvest: string;
-        timeOfHarvest: string;
-        farmLocation: string;
+        dateOfManufacture: string;
+        timeOfManufacture: string;
+        place: string;
         qualityRating: string;
-        pricePerUnit: bigint;
+        priceForFarmer: bigint;
         description: string;
         farmer: string;
         isAvailable: boolean;
@@ -571,11 +571,11 @@ export interface ProductRegistry extends BaseContract {
     [
       _name: string,
       _category: string,
-      _dateOfHarvest: string,
-      _timeOfHarvest: string,
-      _farmLocation: string,
+      _dateOfManufacture: string,
+      _timeOfManufacture: string,
+      _place: string,
       _qualityRating: string,
-      _pricePerUnit: BigNumberish,
+      _priceForFarmer: BigNumberish,
       _description: string
     ],
     [void],
@@ -585,7 +585,7 @@ export interface ProductRegistry extends BaseContract {
   updateProduct: TypedContractMethod<
     [
       _id: BigNumberish,
-      _pricePerUnit: BigNumberish,
+      _priceForFarmer: BigNumberish,
       _qualityRating: string,
       _isAvailable: boolean
     ],
@@ -716,11 +716,11 @@ export interface ProductRegistry extends BaseContract {
         id: bigint;
         name: string;
         category: string;
-        dateOfHarvest: string;
-        timeOfHarvest: string;
-        farmLocation: string;
+        dateOfManufacture: string;
+        timeOfManufacture: string;
+        place: string;
         qualityRating: string;
-        pricePerUnit: bigint;
+        priceForFarmer: bigint;
         description: string;
         farmer: string;
         isAvailable: boolean;
@@ -743,11 +743,11 @@ export interface ProductRegistry extends BaseContract {
     [
       _name: string,
       _category: string,
-      _dateOfHarvest: string,
-      _timeOfHarvest: string,
-      _farmLocation: string,
+      _dateOfManufacture: string,
+      _timeOfManufacture: string,
+      _place: string,
       _qualityRating: string,
-      _pricePerUnit: BigNumberish,
+      _priceForFarmer: BigNumberish,
       _description: string
     ],
     [void],
@@ -758,7 +758,7 @@ export interface ProductRegistry extends BaseContract {
   ): TypedContractMethod<
     [
       _id: BigNumberish,
-      _pricePerUnit: BigNumberish,
+      _priceForFarmer: BigNumberish,
       _qualityRating: string,
       _isAvailable: boolean
     ],

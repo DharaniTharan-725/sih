@@ -3,19 +3,19 @@ pragma solidity ^0.8.9;
 
 contract ProductRegistry {
     struct Product {
-        uint256 id;
-        string name;
-        string category;
-        string dateOfHarvest;
-        string timeOfHarvest;
-        string farmLocation;
-        string qualityRating;
-        uint256 pricePerUnit;
-        string description;
-        address farmer;
-        bool isAvailable;
-        uint256 createdAt;
-        uint256 updatedAt;
+        uint256 id;                 // Product ID
+        string name;                // Product Name
+        string category;            // Category
+        string dateOfManufacture;   // dd-mm-yyyy
+        string timeOfManufacture;   // --:--
+        string place;               // Place (farm/location)
+        string qualityRating;       // Quality rating
+        uint256 priceForFarmer;     // Price for farmer
+        string description;         // Description
+        address farmer;             // Farmer’s wallet
+        bool isAvailable;           // Availability
+        uint256 createdAt;          // Timestamp when created
+        uint256 updatedAt;          // Timestamp when updated
     }
 
     struct Farmer {
@@ -30,7 +30,7 @@ contract ProductRegistry {
     mapping(address => Farmer) public farmers;
     mapping(address => uint256[]) public farmerProducts;
     mapping(string => uint256[]) public categoryProducts;
-    
+
     uint256 public nextProductId;
     address public owner;
 
@@ -38,18 +38,18 @@ contract ProductRegistry {
         uint256 id,
         string name,
         string category,
-        string dateOfHarvest,
-        string timeOfHarvest,
-        string farmLocation,
+        string dateOfManufacture,
+        string timeOfManufacture,
+        string place,
         string qualityRating,
-        uint256 pricePerUnit,
+        uint256 priceForFarmer,
         string description,
         address farmer
     );
 
     event ProductUpdated(
         uint256 id,
-        uint256 pricePerUnit,
+        uint256 priceForFarmer,
         string qualityRating,
         bool isAvailable,
         uint256 updatedAt
@@ -85,7 +85,7 @@ contract ProductRegistry {
         string memory _contactInfo
     ) public {
         require(!farmers[msg.sender].isRegistered, "Farmer already registered");
-        
+
         farmers[msg.sender] = Farmer({
             farmerAddress: msg.sender,
             name: _name,
@@ -100,26 +100,26 @@ contract ProductRegistry {
     function registerProduct(
         string memory _name,
         string memory _category,
-        string memory _dateOfHarvest,
-        string memory _timeOfHarvest,
-        string memory _farmLocation,
+        string memory _dateOfManufacture,
+        string memory _timeOfManufacture,
+        string memory _place,
         string memory _qualityRating,
-        uint256 _pricePerUnit,
+        uint256 _priceForFarmer,
         string memory _description
     ) public onlyFarmer {
         require(bytes(_name).length > 0, "Product name is required");
         require(bytes(_category).length > 0, "Category is required");
-        require(_pricePerUnit > 0, "Price must be greater than 0");
+        require(_priceForFarmer > 0, "Price must be greater than 0");
 
         products[nextProductId] = Product({
             id: nextProductId,
             name: _name,
             category: _category,
-            dateOfHarvest: _dateOfHarvest,
-            timeOfHarvest: _timeOfHarvest,
-            farmLocation: _farmLocation,
+            dateOfManufacture: _dateOfManufacture,
+            timeOfManufacture: _timeOfManufacture,
+            place: _place,
             qualityRating: _qualityRating,
-            pricePerUnit: _pricePerUnit,
+            priceForFarmer: _priceForFarmer,
             description: _description,
             farmer: msg.sender,
             isAvailable: true,
@@ -135,11 +135,11 @@ contract ProductRegistry {
             nextProductId,
             _name,
             _category,
-            _dateOfHarvest,
-            _timeOfHarvest,
-            _farmLocation,
+            _dateOfManufacture,
+            _timeOfManufacture,
+            _place,
             _qualityRating,
-            _pricePerUnit,
+            _priceForFarmer,
             _description,
             msg.sender
         );
@@ -149,20 +149,20 @@ contract ProductRegistry {
 
     function updateProduct(
         uint256 _id,
-        uint256 _pricePerUnit,
+        uint256 _priceForFarmer,
         string memory _qualityRating,
         bool _isAvailable
     ) public productExists(_id) {
         Product storage product = products[_id];
         require(product.farmer == msg.sender, "Only product owner can update");
-        require(_pricePerUnit > 0, "Price must be greater than 0");
+        require(_priceForFarmer > 0, "Price must be greater than 0");
 
-        product.pricePerUnit = _pricePerUnit;
+        product.priceForFarmer = _priceForFarmer;
         product.qualityRating = _qualityRating;
         product.isAvailable = _isAvailable;
         product.updatedAt = block.timestamp;
 
-        emit ProductUpdated(_id, _pricePerUnit, _qualityRating, _isAvailable, block.timestamp);
+        emit ProductUpdated(_id, _priceForFarmer, _qualityRating, _isAvailable, block.timestamp);
     }
 
     function getProduct(uint256 _id) public view productExists(_id) returns (Product memory) {
@@ -180,46 +180,44 @@ contract ProductRegistry {
     function getProductsByFarmer(address _farmer) public view returns (Product[] memory) {
         uint256[] storage productIds = farmerProducts[_farmer];
         Product[] memory farmerProductsList = new Product[](productIds.length);
-        
+
         for (uint256 i = 0; i < productIds.length; i++) {
             farmerProductsList[i] = products[productIds[i]];
         }
-        
+
         return farmerProductsList;
     }
 
     function getProductsByCategory(string memory _category) public view returns (Product[] memory) {
         uint256[] storage productIds = categoryProducts[_category];
         Product[] memory categoryProductsList = new Product[](productIds.length);
-        
+
         for (uint256 i = 0; i < productIds.length; i++) {
             categoryProductsList[i] = products[productIds[i]];
         }
-        
+
         return categoryProductsList;
     }
 
     function getAvailableProducts() public view returns (Product[] memory) {
         uint256 availableCount = 0;
-        
-        // First, count available products
+
         for (uint256 i = 0; i < nextProductId; i++) {
             if (products[i].isAvailable) {
                 availableCount++;
             }
         }
-        
-        // Then, create and populate the array
+
         Product[] memory availableProducts = new Product[](availableCount);
         uint256 currentIndex = 0;
-        
+
         for (uint256 i = 0; i < nextProductId; i++) {
             if (products[i].isAvailable) {
                 availableProducts[currentIndex] = products[i];
                 currentIndex++;
             }
         }
-        
+
         return availableProducts;
     }
 
@@ -243,12 +241,11 @@ contract ProductRegistry {
         return categoryProducts[_category].length;
     }
 
-    // Owner functions for management
     function updateProductAvailability(uint256 _id, bool _isAvailable) public onlyOwner productExists(_id) {
         products[_id].isAvailable = _isAvailable;
         products[_id].updatedAt = block.timestamp;
-        
-        emit ProductUpdated(_id, products[_id].pricePerUnit, products[_id].qualityRating, _isAvailable, block.timestamp);
+
+        emit ProductUpdated(_id, products[_id].priceForFarmer, products[_id].qualityRating, _isAvailable, block.timestamp);
     }
 
     function getContractStats() public view returns (
@@ -258,16 +255,13 @@ contract ProductRegistry {
     ) {
         totalProducts = nextProductId;
         availableProducts = 0;
-        
+
         for (uint256 i = 0; i < nextProductId; i++) {
             if (products[i].isAvailable) {
                 availableProducts++;
             }
         }
-        
-        // Count registered farmers
-        totalFarmers = 0;
-        // This would require iterating through all possible addresses, which isn't practical
-        // In a real scenario, you might maintain a separate array of farmer addresses
+
+        totalFarmers = 0; // Needs an array of farmers for exact count
     }
 }

@@ -1,5 +1,4 @@
-import { useState, useRef, useEffect } from "react";
-import { Html5Qrcode } from "html5-qrcode";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,17 +9,15 @@ import { useToast } from "@/hooks/use-toast";
 
 interface Product {
   productId: string;
-  name: string;
+  productName: string;
   category: string;
-  harvestDate: string;
-  harvestTime: string;
-  farmLocation: string;
+  dateOfManufacture: string;
+  time: string;
+  place: string;
   qualityRating: string;
-  pricePerUnit: number;
+  priceForFarmer: number;
   description: string;
-  farmerAddress: string;
   createdAt: string;
-  transactionHash?: string;
 }
 
 const CustomerDashboard = () => {
@@ -32,8 +29,6 @@ const CustomerDashboard = () => {
   const [verificationError, setVerificationError] = useState<string | null>(null);
   const [qrInput, setQrInput] = useState("");
   const [showScanner, setShowScanner] = useState(false);
-  const videoRef = useRef<HTMLVideoElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   // Function to verify product from QR code data
   const verifyProduct = async (encryptedCode: string) => {
@@ -49,21 +44,34 @@ const CustomerDashboard = () => {
       
       console.log("Verification response:", data);
       
-      if (response.ok && data.success) {
-        setVerifiedProduct(data.product);
-        toast({
-          title: "Product Verified Successfully!",
-          description: `Authentic product with ID ${data.product.productId} verified on blockchain.`,
-        });
+      // Handle both response formats
+      if (response.ok) {
+        if (data.success !== false && data.verified !== false) {
+          // Product found and verified
+          if (data.product) {
+            setVerifiedProduct(data.product);
+            toast({
+              title: "Product Verified Successfully!",
+              description: `Authentic product with ID ${data.product.productId} verified on blockchain.`,
+            });
+          } else {
+            throw new Error("Product data missing from response");
+          }
+        } else {
+          // Product found but verification failed
+          throw new Error(data.error || "Product verification failed");
+        }
       } else {
-        throw new Error(data.error || 'Failed to verify product');
+        // HTTP error
+        throw new Error(data.error || `Server error: ${response.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Verification error:', error);
-      setVerificationError(error.message);
+      const errorMessage = error.message || "Unknown verification error";
+      setVerificationError(errorMessage);
       toast({
         title: "Verification Failed",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive"
       });
     } finally {
@@ -77,20 +85,18 @@ const CustomerDashboard = () => {
       verifyProduct(qrInput.trim());
     } else {
       setVerificationError("Please enter a QR code value");
+      toast({
+        title: "Input Error",
+        description: "Please enter a QR code value",
+        variant: "destructive"
+      });
     }
   };
 
   // Function to simulate QR code scanning (for demo purposes)
   const simulateCustomerScan = () => {
-    // Create a mock encrypted code based on typical product data
-    const productData = {
-      productId: "AGR-1703520000000",
-      name: "Organic Tomatoes",
-      farmLocation: "Green Valley Farm, Odisha",
-      timestamp: Date.now()
-    };
-    
-    const mockEncryptedCode = btoa(`${productData.productId}|${productData.name}|${productData.farmLocation}|${productData.timestamp}`);
+    // For demo, let's use a valid format that matches what the backend generates
+    const mockEncryptedCode = "QUdSLTg4NGY0Y2N8T3JnYW5pYyBBcHBsZXN8Q2FsaWZvcm5pYSBGYXJtfDE3MzE2MTQ5ODA4OQ==";
     setQrInput(mockEncryptedCode);
     verifyProduct(mockEncryptedCode);
   };
@@ -99,30 +105,40 @@ const CustomerDashboard = () => {
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onload = async (e) => {
-        const imageDataUrl = e.target?.result as string;
-        try {
-          const html5Qr = new Html5Qrcode("qr-image-reader");
-          const result = await html5Qr.scanFile(file, true);
-          setQrInput(result);
-          verifyProduct(result);
-        } catch (err) {
-          setVerificationError("Could not decode QR code from image.");
-          toast({
-            title: "QR Decode Failed",
-            description: "Could not decode QR code from image.",
-            variant: "destructive"
-          });
-        }
-      };
-      reader.readAsDataURL(file);
+      try {
+        const reader = new FileReader();
+        reader.onload = async (e) => {
+          const imageDataUrl = e.target?.result as string;
+          // Dynamically import html5-qrcode
+          const { Html5Qrcode } = await import('html5-qrcode');
+          const qr = new Html5Qrcode("qr-upload-temp");
+          qr.scanFile(file, false)
+            .then((decodedText: string) => {
+              setQrInput(decodedText);
+              verifyProduct(decodedText);
+            })
+            .catch((err: any) => {
+              toast({
+                title: "QR Code Error",
+                description: "Could not decode QR code: " + err,
+                variant: "destructive"
+              });
+            });
+        };
+        reader.readAsDataURL(file);
+      } catch (err) {
+        toast({
+          title: "QR Code Error",
+          description: "Could not process QR code image.",
+          variant: "destructive"
+        });
+      }
     }
   };
 
   // Function to get quality rating badge color
   const getQualityColor = (rating: string) => {
-    switch (rating.toLowerCase()) {
+    switch (rating?.toLowerCase()) {
       case "premium": return "bg-green-100 text-green-800";
       case "excellent": return "bg-blue-100 text-blue-800";
       case "good": return "bg-yellow-100 text-yellow-800";
@@ -133,11 +149,15 @@ const CustomerDashboard = () => {
 
   // Format date for display
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-IN', {
-      year: 'numeric',
-      month: 'long',
-      day: 'numeric'
-    });
+    try {
+      return new Date(dateString).toLocaleDateString('en-IN', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+      });
+    } catch (e) {
+      return dateString;
+    }
   };
 
   return (
@@ -185,7 +205,11 @@ const CustomerDashboard = () => {
                   </p>
                   
                   <div className="flex flex-col gap-3">
-                    <Button variant="scan" onClick={simulateCustomerScan} disabled={loading}>
+                    <Button 
+                      onClick={simulateCustomerScan} 
+                      disabled={loading}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
                       {loading ? "Verifying..." : "Simulate QR Scan (Demo)"}
                     </Button>
                     
@@ -200,8 +224,6 @@ const CustomerDashboard = () => {
                       <Button variant="outline" className="w-full">
                         Upload QR Code Image
                       </Button>
-                      {/* Container for html5-qrcode image scan (hidden) */}
-                      <div id="qr-image-reader" style={{ display: "none" }}></div>
                     </div>
                   </div>
                 </div>
@@ -218,7 +240,11 @@ const CustomerDashboard = () => {
                       placeholder="Paste QR code content here"
                       className="flex-1 px-3 py-2 border rounded-md"
                     />
-                    <Button onClick={handleManualVerify} disabled={loading || !qrInput.trim()}>
+                    <Button 
+                      onClick={handleManualVerify} 
+                      disabled={loading || !qrInput.trim()}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
                       Verify
                     </Button>
                   </div>
@@ -243,7 +269,7 @@ const CustomerDashboard = () => {
               <Card className="bg-gradient-card border-border shadow-card">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="h-5 w-5 text-success" />
+                    <CheckCircle className="h-5 w-5 text-green-600" />
                     Verified Product Details
                   </CardTitle>
                   <CardDescription>
@@ -254,7 +280,7 @@ const CustomerDashboard = () => {
                   {/* Basic Product Info */}
                   <div className="grid md:grid-cols-2 gap-4">
                     <div>
-                      <h3 className="font-semibold text-lg">{verifiedProduct.name}</h3>
+                      <h3 className="font-semibold text-lg">{verifiedProduct.productName}</h3>
                       <Badge variant="secondary" className="capitalize mt-1">
                         {verifiedProduct.category}
                       </Badge>
@@ -268,32 +294,32 @@ const CustomerDashboard = () => {
                   {/* Farm Information */}
                   <div className="bg-muted/30 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-3">
-                      <User className="h-5 w-5 text-success" />
+                      <User className="h-5 w-5 text-green-600" />
                       <h4 className="font-semibold">Farm Information</h4>
                     </div>
                     <div className="grid md:grid-cols-2 gap-4 text-sm">
                       <div>
-                        <Label className="text-muted-foreground">Harvest Date</Label>
+                        <Label className="text-muted-foreground">Date of Manufacture</Label>
                         <div className="flex items-center gap-2 mt-1">
                           <Calendar className="h-4 w-4" />
-                          <span>{formatDate(verifiedProduct.harvestDate)}</span>
+                          <span>{formatDate(verifiedProduct.dateOfManufacture)}</span>
                         </div>
                       </div>
                       <div>
-                        <Label className="text-muted-foreground">Harvest Time</Label>
-                        <span>{verifiedProduct.harvestTime}</span>
+                        <Label className="text-muted-foreground">Time</Label>
+                        <span>{verifiedProduct.time}</span>
                       </div>
-                      <div>
-                        <Label className="text-muted-foreground">Farm Location</Label>
+                      <div className="md:col-span-2">
+                        <Label className="text-muted-foreground">Place</Label>
                         <div className="flex items-center gap-2 mt-1">
                           <MapPin className="h-4 w-4" />
-                          <span>{verifiedProduct.farmLocation}</span>
+                          <span>{verifiedProduct.place}</span>
                         </div>
                       </div>
                       <div>
                         <Label className="text-muted-foreground">Quality Rating</Label>
                         <div className="flex items-center gap-2 mt-1">
-                          <Star className="h-4 w-4 fill-warning text-warning" />
+                          <Star className="h-4 w-4 text-yellow-500" />
                           <Badge className={getQualityColor(verifiedProduct.qualityRating)}>
                             {verifiedProduct.qualityRating}
                           </Badge>
@@ -305,13 +331,13 @@ const CustomerDashboard = () => {
                   {/* Pricing Information */}
                   <div className="bg-muted/30 p-4 rounded-lg">
                     <div className="flex items-center gap-2 mb-3">
-                      <DollarSign className="h-5 w-5 text-success" />
+                      <DollarSign className="h-5 w-5 text-green-600" />
                       <h4 className="font-semibold">Pricing Information</h4>
                     </div>
                     <div className="text-sm">
-                      <Label className="text-muted-foreground">Price per Unit</Label>
+                      <Label className="text-muted-foreground">Price for Farmer</Label>
                       <p className="text-2xl font-bold text-green-600 mt-1">
-                        ₹{verifiedProduct.pricePerUnit.toFixed(2)}
+                        ₹{verifiedProduct.priceForFarmer?.toFixed(2)}
                       </p>
                     </div>
                   </div>
@@ -322,31 +348,13 @@ const CustomerDashboard = () => {
                     <p className="text-sm mt-1 p-3 bg-muted/20 rounded-md">{verifiedProduct.description}</p>
                   </div>
 
-                  {/* Blockchain Information */}
-                  <div className="bg-muted/30 p-4 rounded-lg">
-                    <div className="flex items-center gap-2 mb-3">
-                      <CheckCircle className="h-5 w-5 text-success" />
-                      <h4 className="font-semibold">Blockchain Verification</h4>
-                    </div>
-                    <div className="grid md:grid-cols-2 gap-4 text-sm">
-                      <div>
-                        <Label className="text-muted-foreground">Farmer Address</Label>
-                        <p className="font-mono text-xs break-all mt-1">{verifiedProduct.farmerAddress}</p>
-                      </div>
-                      <div>
-                        <Label className="text-muted-foreground">Registration Date</Label>
-                        <p className="mt-1">{formatDate(verifiedProduct.createdAt)}</p>
-                      </div>
-                    </div>
-                  </div>
-
                   {/* Verification Status */}
-                  <div className="bg-success/10 p-4 rounded-lg border border-success/20">
+                  <div className="bg-green-100 p-4 rounded-lg border border-green-200">
                     <div className="flex items-center gap-2 mb-2">
-                      <CheckCircle className="h-5 w-5 text-success" />
-                      <span className="font-semibold text-success">✓ Blockchain Verified</span>
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <span className="font-semibold text-green-800">✓ Blockchain Verified</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">
+                    <p className="text-sm text-green-700">
                       This product's information has been successfully verified on the blockchain. 
                       All details are authentic and tamper-proof.
                     </p>
@@ -364,23 +372,23 @@ const CustomerDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                   <span>Guaranteed product authenticity</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                   <span>Complete supply chain transparency</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                   <span>Quality assurance at every step</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                   <span>Fair pricing verification</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <CheckCircle className="h-4 w-4 text-success mt-0.5" />
+                  <CheckCircle className="h-4 w-4 text-green-600 mt-0.5" />
                   <span>Support for local farmers</span>
                 </div>
               </CardContent>
@@ -392,19 +400,15 @@ const CustomerDashboard = () => {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div className="flex items-start gap-3">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs flex items-center justify-center mt-0.5">1</span>
-                  <span>Locate the QR code on the product packaging</span>
+                  <span className="bg-blue-600 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center mt-0.5">1</span>
+                  <span>Click "Simulate QR Scan" for a demo verification</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs flex items-center justify-center mt-0.5">2</span>
-                  <span>Click "Simulate QR Scan" or upload an image</span>
-                </div>
-                <div className="flex items-start gap-3">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs flex items-center justify-center mt-0.5">3</span>
+                  <span className="bg-blue-600 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center mt-0.5">2</span>
                   <span>View complete product history and verification</span>
                 </div>
                 <div className="flex items-start gap-3">
-                  <span className="bg-primary text-primary-foreground w-5 h-5 rounded-full text-xs flex items-center justify-center mt-0.5">4</span>
+                  <span className="bg-blue-600 text-white w-5 h-5 rounded-full text-xs flex items-center justify-center mt-0.5">3</span>
                   <span>Confirm product authenticity</span>
                 </div>
               </CardContent>

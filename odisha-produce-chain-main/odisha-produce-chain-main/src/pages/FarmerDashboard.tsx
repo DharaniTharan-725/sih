@@ -36,19 +36,21 @@ const FarmerDashboard = () => {
   const registerProduct = async () => {
     setLoading(true);
     try {
+      console.log("Sending product data:", productData);
+      
       const response = await fetch('http://localhost:8086/api/products/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          name: productData.productName,
+          productName: productData.productName,
           category: productData.category,
-          harvestDate: productData.dateOfManufacture,
-          harvestTime: productData.time,
-          farmLocation: productData.place,
+          dateOfManufacture: productData.dateOfManufacture,
+          time: productData.time,
+          place: productData.place,
           qualityRating: productData.qualityRating,
-          pricePerUnit: parseFloat(productData.priceForFarmer),
+          priceForFarmer: parseFloat(productData.priceForFarmer),
           description: productData.description,
           productId: productData.productId || undefined
         })
@@ -57,7 +59,9 @@ const FarmerDashboard = () => {
       let data;
       try {
         data = await response.json();
+        console.log("Response from server:", data);
       } catch (jsonError) {
+        console.error("JSON parsing error:", jsonError);
         throw new Error("Server did not return valid JSON. Please check backend.");
       }
 
@@ -72,6 +76,7 @@ const FarmerDashboard = () => {
         throw new Error((data && data.error) || 'Failed to register product');
       }
     } catch (error) {
+      console.error("Registration error:", error);
       toast({
         title: "Registration Failed",
         description: error.message || String(error),
